@@ -1,0 +1,248 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WiFiFlow | Hotspot Manager</title>
+<style>
+:root{--bg:#f4f7fb;--ink:#172033;--muted:#64748b;--blue:#2563eb;--line:#e2e8f0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px Arial,sans-serif}
+header{background:#101d36;color:white;padding:22px 5%;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:22px;margin:0}
+header p{margin:6px 0 0;color:#b8c7e3;font-size:13px}
+.demo{font-size:12px;background:#34435e;padding:8px 12px;border-radius:20px}
+main{max-width:1100px;margin:28px auto;padding:0 18px}
+h2{font-size:19px;margin:0 0 16px}
+.muted{color:var(--muted);font-size:13px;line-height:1.5}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:26px}
+.card{background:white;border:1px solid var(--line);border-radius:13px;padding:19px;margin-bottom:18px}
+.stat-label{color:var(--muted);font-size:13px}
+.stat-value{font-size:27px;font-weight:700;margin-top:12px}
+.layout{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+label{display:block;font-size:13px;font-weight:600;margin:13px 0 7px}
+input,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;background:white;font-size:14px}
+button{border:0;border-radius:8px;padding:11px 14px;background:var(--blue);color:white;font-weight:600;cursor:pointer}
+button:hover{filter:brightness(.93)}
+button.secondary{background:#e8eef9;color:#1d3d75}
+button.danger{background:#fee2e2;color:#991b1b}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.package,.session{border:1px solid var(--line);padding:13px;border-radius:9px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.package small,.session small{display:block;color:var(--muted);margin-top:5px}
+.price{font-weight:700;font-size:17px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:12px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600}
+.table-wrap{overflow-x:auto}
+.status{display:inline-block;border-radius:15px;padding:5px 8px;font-size:11px;background:#dcfce7;color:#166534}
+.status.demo-status{background:#fef3c7;color:#92400e}
+.empty{padding:20px;text-align:center;color:var(--muted);font-size:13px}
+.notice{padding:12px;border-radius:8px;background:#eff6ff;color:#1e40af;font-size:13px;line-height:1.5;margin-top:12px}
+footer{text-align:center;color:var(--muted);padding:25px;font-size:12px}
+@media(max-width:680px){.layout{grid-template-columns:1fr}header{padding:18px}.card{padding:15px}main{margin-top:18px}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>WiFiFlow</h1>
+    <p>Self-service hotspot payment platform</p>
+  </div>
+  <span class="demo">DEMO MODE · No real payments</span>
+</header>
+
+<main>
+  <h2>Hotspot dashboard</h2>
+  <p class="muted">Manage your sample packages and test the payment workflow.</p>
+
+  <section class="stats">
+    <div class="card">
+      <div class="stat-label">Demo sales</div>
+      <div class="stat-value" id="sales">KSh 0</div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Successful demo payments</div>
+      <div class="stat-value" id="payments">0</div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Active demo sessions</div>
+      <div class="stat-value" id="active">0</div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Internet hardware</div>
+      <div class="stat-value" style="font-size:19px">Not connected</div>
+    </div>
+  </section>
+
+  <section class="layout">
+    <div class="card">
+      <h2>Create an internet package</h2>
+      <form id="packageForm">
+        <label for="packageName">Package name</label>
+        <input id="packageName" placeholder="e.g. 1 Hour" required maxlength="40">
+        <label for="packagePrice">Price (KSh)</label>
+        <input id="packagePrice" type="number" min="1" max="100000" step="1" placeholder="10" required>
+        <label for="packageMinutes">Duration (minutes)</label>
+        <input id="packageMinutes" type="number" min="1" max="43200" step="1" placeholder="60" required>
+        <div class="actions">
+          <button type="submit">Add package</button>
+        </div>
+      </form>
+      <p class="muted">Packages are saved in this browser for demonstration only.</p>
+    </div>
+
+    <div class="card">
+      <h2>Available packages</h2>
+      <div id="packages"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Test the payment workflow</h2>
+    <p class="muted">Choose a package and enter a sample Kenyan phone number. No STK Push will be sent and no money will be collected.</p>
+    <form id="paymentForm">
+      <label for="customerPhone">Customer phone number</label>
+      <input id="customerPhone" placeholder="0712345678" inputmode="tel" required>
+      <label for="selectedPackage">Select package</label>
+      <select id="selectedPackage" required></select>
+      <div class="actions">
+        <button type="submit">Simulate successful payment</button>
+      </div>
+    </form>
+    <div class="notice">Demo only: this button simulates a successful payment. It does not verify M-Pesa transactions or unlock internet access.</div>
+    <div id="paymentMessage" class="muted" role="status" aria-live="polite" style="margin-top:12px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Customer sessions</h2>
+    <p class="muted">Sample sessions expire according to their selected package while this page remains open.</p>
+    <div id="sessions"><div class="empty">No sessions yet. Try a demo payment above.</div></div>
+  </section>
+
+  <section class="card">
+    <h2>Demo transaction history</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Reference</th><th>Phone</th><th>Package</th><th>Amount</th><th>Result</th></tr></thead>
+        <tbody id="history"><tr><td colspan="5" class="empty">No demo transactions yet.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="secondary" id="exportButton" type="button">Export demo history CSV</button>
+      <button class="danger" id="resetButton" type="button">Reset demo data</button>
+    </div>
+  </section>
+</main>
+
+<footer>WiFiFlow prototype · Demo data only · Not connected to a router or M-Pesa</footer>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const money = n => "KSh " + Number(n).toLocaleString("en-KE");
+  const defaults = [
+    {id:1,name:"1 Hour",price:10,minutes:60},
+    {id:2,name:"3 Hours",price:20,minutes:180},
+    {id:3,name:"1 Day",price:50,minutes:1440}
+  ];
+  let packages = defaults;
+  let sessions = [];
+  let history = [];
+  let sales = 0;
+  let nextId = 4;
+
+  function renderPackages(){
+    $("packages").innerHTML = packages.length ? packages.map(p =>
+      '<div class="package"><div><strong>'+escapeHTML(p.name)+'</strong><small>'+p.minutes+' minutes</small></div><div class="price">'+money(p.price)+'</div></div>'
+    ).join("") : '<div class="empty">Add your first package.</div>';
+
+    $("selectedPackage").innerHTML = packages.length
+      ? packages.map(p=>'<option value="'+p.id+'">'+escapeHTML(p.name)+' — '+money(p.price)+'</option>').join("")
+      : '<option value="">Create a package first</option>';
+  }
+
+  function escapeHTML(value){
+    return String(value).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
+
+  function renderSessions(){
+    const now = Date.now();
+    sessions = sessions.filter(s=>s.expiresAt > now);
+    $("sessions").innerHTML = sessions.length ? sessions.map(s =>
+      '<div class="session"><div><strong>'+escapeHTML(s.phone)+'</strong><small>'+escapeHTML(s.packageName)+'</small></div><div style="text-align:right"><span class="status">Demo active</span><small>'+Math.max(1,Math.ceil((s.expiresAt-now)/60000))+' min remaining</small></div></div>'
+    ).join("") : '<div class="empty">No active demo sessions.</div>';
+    $("active").textContent = sessions.length;
+  }
+
+  function renderHistory(){
+    $("history").innerHTML = history.length ? history.map(h =>
+      '<tr><td>'+escapeHTML(h.ref)+'</td><td>'+escapeHTML(h.phone)+'</td><td>'+escapeHTML(h.packageName)+'</td><td>'+money(h.amount)+'</td><td><span class="status demo-status">SIMULATED</span></td></tr>'
+    ).join("") : '<tr><td colspan="5" class="empty">No demo transactions yet.</td></tr>';
+    $("sales").textContent = money(sales);
+    $("payments").textContent = history.length;
+  }
+
+  $("packageForm").addEventListener("submit",function(e){
+    e.preventDefault();
+    const name = $("packageName").value.trim();
+    const price = Number($("packagePrice").value);
+    const minutes = Number($("packageMinutes").value);
+    if(!name || !Number.isInteger(price) || price<1 || price>100000 ||
+       !Number.isInteger(minutes) || minutes<1 || minutes>43200){
+      alert("Enter a valid package name, whole-number price and duration.");
+      return;
+    }
+    packages.push({id:nextId++,name,price,minutes});
+    renderPackages();
+    this.reset();
+  });
+
+  $("paymentForm").addEventListener("submit",function(e){
+    e.preventDefault();
+    const phone = $("customerPhone").value.trim().replace(/[\s-]/g,"");
+    if(!/^(?:\+?254|0)7\d{8}$/.test(phone) && !/^(?:\+?254|0)1\d{8}$/.test(phone)){
+      $("paymentMessage").textContent="Enter a valid sample Kenyan mobile number.";
+      return;
+    }
+    const p = packages.find(x=>x.id===Number($("selectedPackage").value));
+    if(!p){
+      $("paymentMessage").textContent="Create a package first.";
+      return;
+    }
+
+    const ref = "DEMO-"+Date.now().toString().slice(-8);
+    history.unshift({ref,phone,packageName:p.name,amount:p.price});
+    sales += p.price;
+    sessions.push({phone,packageName:p.name,expiresAt:Date.now()+p.minutes*60000});
+    $("paymentMessage").textContent="Demo payment recorded. This is not an actual M-Pesa confirmation, and no real internet access was granted.";
+    renderHistory();
+    renderSessions();
+  });
+
+  $("exportButton").addEventListener("click",function(){
+    const rows=[["Reference","Phone","Package","Amount KSh","Status"],
+      ...history.map(h=>[h.ref,h.phone,h.packageName,h.amount,"SIMULATED"])];
+    const csv=rows.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+    const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+    const a=document.createElement("a");
+    a.href=url;a.download="wifi-demo-history.csv";a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  $("resetButton").addEventListener("click",function(){
+    if(!confirm("Clear all demo packages, sessions and transaction history?")) return;
+    packages=defaults.map(p=>({...p}));
+    sessions=[];history=[];sales=0;nextId=4;
+    $("paymentMessage").textContent="";
+    renderPackages();renderHistory();renderSessions();
+  });
+
+  renderPackages();renderHistory();renderSessions();
+  setInterval(renderSessions,15000);
+})();
+</script>
+</body>
+</html>
